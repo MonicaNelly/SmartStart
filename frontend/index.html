@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSteps | Grade 4 Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1f2a5c;--sky:#eaf2ff;--sun:#ffc93c;--mint:#2ec4a6;--pink:#ff6b9d;--white:#fff;--bad:#e5484d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sky);color:var(--ink);font:500 1.05rem/1.5 Nunito,system-ui,sans-serif}
+h1,h2,h3{font-family:Fredoka,Nunito,sans-serif;margin:.2em 0}
+header{background:var(--ink);color:var(--white);padding:14px 20px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+header h1{color:var(--sun);font-size:1.8rem}
+header p{margin:0;opacity:.85}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{background:transparent;color:var(--white);border:2px solid #ffffff55;padding:6px 12px;border-radius:99px;font:inherit;cursor:pointer}
+nav button:hover,nav button:focus-visible{background:var(--sun);color:var(--ink);outline:none}
+main{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+.card{background:var(--white);border-radius:20px;padding:20px;margin:14px 0;box-shadow:0 3px 0 #1f2a5c22}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.tile{background:var(--white);border:3px solid var(--ink);border-radius:18px;padding:16px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.tile:hover,.tile:focus-visible{background:var(--sun);outline:none}
+.tile .ic{font-size:2rem;display:block}
+.hero{text-align:center;padding:30px 10px}
+.hero h2{font-size:2.2rem}
+button.big,button.primary{background:var(--sun);color:var(--ink);border:3px solid var(--ink);border-radius:99px;padding:10px 24px;font:600 1.1rem Fredoka,sans-serif;cursor:pointer}
+button.big:hover,button.primary:hover{background:var(--mint)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
+.stats b{display:block;font:600 1.8rem Fredoka,sans-serif}
+.muted{opacity:.7;margin:0}
+input,textarea{width:100%;padding:10px 12px;border:3px solid var(--ink);border-radius:12px;font:inherit;margin:6px 0 12px;background:var(--white);color:var(--ink)}
+.avatars{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.avatars label{font-size:2rem;cursor:pointer;border:3px solid transparent;border-radius:14px;padding:2px 8px}
+.avatars input{display:none;width:auto}
+.avatars input:checked+span{outline:4px solid var(--mint);border-radius:12px}
+.opts{display:grid;gap:10px;margin:14px 0}
+.opt{background:var(--white);border:3px solid var(--ink);border-radius:14px;padding:12px;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.opt:hover:not(:disabled){background:var(--sky)}
+.opt.right{background:var(--mint);color:var(--ink)}
+.opt.wrong{background:var(--pink)}
+.bar{background:var(--sky);border-radius:99px;height:14px;overflow:hidden;border:2px solid var(--ink)}
+.bar span{display:block;height:100%;background:var(--mint)}
+.row{display:grid;grid-template-columns:130px 1fr 50px;gap:10px;align-items:center;margin:8px 0}
+.badge{display:inline-block;background:var(--sun);border-radius:99px;padding:4px 12px;margin:4px 4px 0 0}
+.badge.off{background:#ddd;opacity:.6}
+.steps li{margin:6px 0}
+.ok{color:#0b7a64;font-weight:700}.no{color:var(--bad);font-weight:700}
+.back{background:none;border:0;font:inherit;color:var(--ink);text-decoration:underline;cursor:pointer;padding:0}
+@media(max-width:520px){.row{grid-template-columns:90px 1fr 44px}.hero h2{font-size:1.7rem}}
+@media(prefers-reduced-motion:no-preference){.card{transition:transform .15s}.card:hover{transform:translateY(-1px)}}
+</style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>SmartSteps</h1>
+            <p>Learn. Practice. Grow.</p>
+        </div>
+        <nav id="nav" hidden>
+            <button data-go="home">Home</button>
+            <button data-go="helper">Homework Helper</button>
+            <button data-go="progress">Progress</button>
+            <button data-go="parent">Parents</button>
+        </nav>
+    </header>
+
+    <main id="app"></main>
+
+<script>
+/* ========== SmartSteps front end ==========
+   Data is saved in the browser (localStorage). A backend would replace this later. */
+const app = document.querySelector('#app');
+const KEY = 'smartsteps';
+let S = JSON.parse(localStorage.getItem(KEY) || 'null'); // the learner profile + progress
+const save = () => localStorage.setItem(KEY, JSON.stringify(S));
+const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const shuffle = a => a.map(x => [Math.random(), x]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); // stops HTML injection from typed text
+
+/* ---------- Question builders ---------- */
+function mk(q, right, wrong, why) {
+  const opts = shuffle([right, ...[...new Set(wrong)].filter(w => w !== right).slice(0, 3)]);
+  return { q, opts, a: opts.indexOf(right), why };
+}
+const bank = list => () => { const [q, r, w, y] = list[rand(0, list.length - 1)]; return mk(q, r, w, y); };
+
+/* ---------- Topics: lesson text + question generator ---------- */
+const TOPICS = {
+  add: { subj: 'Maths', name: 'Addition', icon: '➕', kw: /add|plus|sum/,
+    lesson: 'Add the ones first, then the tens. If the ones make 10 or more, carry the extra ten over to the tens column.',
+    gen: () => { const a = rand(10, 99), b = rand(10, 99), r = a + b;
+      return mk(`${a} + ${b} = ?`, r, [r + 10, r - 10, r + 1, r - 1], `Ones: ${a % 10}+${b % 10}. Tens: ${a - a % 10}+${b - b % 10}. Together that is ${r}.`); } },
+  sub: { subj: 'Maths', name: 'Subtraction', icon: '➖', kw: /subtract|minus|take away|difference/,
+    lesson: 'Subtract the ones first, then the tens. If the top ones digit is smaller, borrow one ten.',
+    gen: () => { const a = rand(30, 99), b = rand(10, a - 1), r = a - b;
+      return mk(`${a} − ${b} = ?`, r, [r + 10, r - 10, r + 1, r - 1], `${a} take away ${b} leaves ${r}. Check: ${r} + ${b} = ${a}.`); } },
+  mul: { subj: 'Maths', name: 'Multiplication', icon: '✖️', kw: /multipl|times|product/,
+    lesson: 'Multiplication is repeated adding. 4 × 3 means 4 groups of 3: 3 + 3 + 3 + 3 = 12.',
+    gen: () => { const a = rand(2, 12), b = rand(2, 12), r = a * b;
+      return mk(`${a} × ${b} = ?`, r, [r + a, r - b, r + b, r - a], `${a} groups of ${b} make ${r}.`); } },
+  div: { subj: 'Maths', name: 'Division', icon: '➗', kw: /divid|share|split|quotient/,
+    lesson: 'Division shares a number into equal groups. Think of the multiplication fact backwards: 12 ÷ 3 = 4 because 3 × 4 = 12.',
+    gen: () => { const b = rand(2, 10), c = rand(2, 12), a = b * c;
+      return mk(`${a} ÷ ${b} = ?`, c, [c + 1, c - 1, c + 2, b], `${b} × ${c} = ${a}, so ${a} ÷ ${b} = ${c}.`); } },
+  frac: { subj: 'Maths', name: 'Fractions', icon: '🍕', kw: /fraction|half|quarter|numerator|denominator/,
+    lesson: 'A fraction is part of a whole. The bottom number (denominator) is how many equal parts. The top number (numerator) is how many you have. When the bottoms are the same, just add the tops.',
+    gen: () => { const d = rand(4, 10), n1 = rand(1, d - 3), n2 = rand(1, d - n1 - 1), r = n1 + n2;
+      return mk(`${n1}/${d} + ${n2}/${d} = ?`, `${r}/${d}`, [`${r}/${d * 2}`, `${r + 1}/${d}`, `${r - 1}/${d}`, `${n1 * n2}/${d}`], `The bottoms match, so add the tops: ${n1} + ${n2} = ${r}. The answer is ${r}/${d}.`); } },
+  pos: { subj: 'English', name: 'Parts of Speech', icon: '🔤', kw: /noun|verb|adjective|adverb|parts of speech/,
+    lesson: 'A noun names a person, place or thing. A verb is an action word. An adjective describes a noun. An adverb describes a verb.',
+    gen: bank([
+      ['Which word is a NOUN? "The dog barked loudly."', 'dog', ['barked', 'loudly', 'the'], 'A dog is an animal, which is a thing, so it is a noun.'],
+      ['Which word is a VERB? "Thabo kicked the ball."', 'kicked', ['Thabo', 'ball', 'the'], 'Kicked is the action.'],
+      ['Which word is an ADJECTIVE? "She wore a red dress."', 'red', ['wore', 'dress', 'she'], 'Red describes the dress.'],
+      ['Which word is an ADVERB? "The turtle moved slowly."', 'slowly', ['turtle', 'moved', 'the'], 'Slowly tells us how the turtle moved.'],
+      ['Which word is a NOUN? "Sipho eats an apple."', 'apple', ['eats', 'an', 'Sipho eats'], 'An apple is a thing.'],
+      ['Which word is a VERB? "Birds fly high."', 'fly', ['birds', 'high', 'Birds fly'], 'Fly is what the birds do.']]) },
+  spell: { subj: 'English', name: 'Spelling', icon: '✏️', kw: /spell/,
+    lesson: 'Look at the word, say it in syllables, cover it, then write it. Watch for tricky letters such as the "ie" in friend.',
+    gen: bank([
+      ['Choose the correct spelling:', 'friend', ['freind', 'frend', 'frind'], 'Remember: a friend is there till the END.'],
+      ['Choose the correct spelling:', 'because', ['becuase', 'becaus', 'becose'], 'Big Elephants Can Always Understand Small Elephants.'],
+      ['Choose the correct spelling:', 'beautiful', ['beutiful', 'beatiful', 'beautifull'], 'Beau + ti + ful.'],
+      ['Choose the correct spelling:', 'different', ['diffrent', 'diferent', 'differant'], 'Two f’s, and it ends in -ent.'],
+      ['Choose the correct spelling:', 'school', ['scool', 'skool', 'schoul'], 'It starts with "sch" and has a double o.']]) },
+  vocab: { subj: 'English', name: 'Vocabulary', icon: '📖', kw: /vocab|meaning|synonym|word/,
+    lesson: 'When you meet a new word, read the sentence around it for clues. A synonym is a word with a similar meaning.',
+    gen: bank([
+      ['What is a synonym for "big"?', 'large', ['tiny', 'quiet', 'cold'], 'Big and large mean almost the same.'],
+      ['What does "enormous" mean?', 'very big', ['very small', 'very fast', 'very old'], 'Enormous is bigger than big.'],
+      ['What is a synonym for "happy"?', 'joyful', ['angry', 'tired', 'hungry'], 'Joyful means full of joy.'],
+      ['What does "rapid" mean?', 'fast', ['slow', 'loud', 'heavy'], 'A rapid train is a fast train.'],
+      ['What is the opposite of "ancient"?', 'modern', ['old', 'broken', 'tall'], 'Ancient means very old, modern means new.']]) },
+  matter: { subj: 'Natural Sciences', name: 'Matter', icon: '🧊', kw: /matter|solid|liquid|gas|melt|freeze/,
+    lesson: 'Matter is anything that takes up space. It comes in three states: solid (keeps its shape), liquid (flows) and gas (spreads out). Heating or cooling can change the state.',
+    gen: bank([
+      ['Which is a SOLID?', 'a rock', ['water', 'steam', 'air'], 'A rock keeps its own shape.'],
+      ['What happens when ice is heated?', 'it melts', ['it freezes', 'it disappears', 'it turns to rock'], 'Heat turns solid ice into liquid water.'],
+      ['Steam is which state of matter?', 'gas', ['solid', 'liquid', 'plasma'], 'Steam is water in its gas form.'],
+      ['Which one flows and takes the shape of its container?', 'a liquid', ['a solid', 'a rock', 'a brick'], 'Liquids flow.'],
+      ['Water turns into ice when it is...', 'cooled', ['heated', 'stirred', 'shaken'], 'Cooling water below 0 °C freezes it.']]) },
+  life: { subj: 'Natural Sciences', name: 'Living Things', icon: '🌱', kw: /living|plant|animal|habitat|photosynthesis/,
+    lesson: 'Living things grow, need food and water, and have babies. Plants make their own food using sunlight. A habitat is the place where a plant or animal lives.',
+    gen: bank([
+      ['Which of these is a living thing?', 'a tree', ['a stone', 'a chair', 'a cloud'], 'Trees grow and reproduce.'],
+      ['What do plants need to make food?', 'sunlight', ['sweets', 'plastic', 'sand'], 'Plants use sunlight, water and air.'],
+      ['A habitat is...', 'where an animal lives', ['what an animal eats', 'a baby animal', 'an animal sound'], 'A habitat is a home in nature.'],
+      ['Which animal lives in the ocean?', 'a whale', ['a lion', 'a zebra', 'an eagle'], 'Whales are ocean mammals.'],
+      ['Which part of a plant takes in water?', 'roots', ['petals', 'leaves', 'fruit'], 'Roots drink water from the soil.']]) }
+};
+const SUBJECTS = { 'Maths': '🧮', 'English': '📚', 'Natural Sciences': '🔬' };
+
+/* ---------- Progress helpers ---------- */
+const BADGES = [
+  ['First quiz', () => S.scores.length >= 1],
+  ['Perfect score', () => S.scores.some(s => s.score === s.total)],
+  ['3-day streak', () => S.streak >= 3],
+  ['100 points', () => S.points >= 100]];
+const avg = list => list.length ? Math.round(list.reduce((t, s) => t + s.score / s.total, 0) / list.length * 100) : null;
+const log = t => { S.log.unshift(`${new Date().toLocaleDateString()} – ${t}`); S.log = S.log.slice(0, 8); };
+function bumpStreak() {
+  const today = new Date().toDateString(), y = new Date(Date.now() - 864e5).toDateString();
+  if (S.last === today) return;
+  S.streak = S.last === y ? S.streak + 1 : 1; S.last = today;
+}
+
+/* ---------- Views (each one writes HTML into #app) ---------- */
+const views = {
+  landing() {
+    app.innerHTML = `<section class="hero"><h2>Welcome to SmartSteps 👋</h2>
+      <p>Your learning companion for Grade 4 homework, practice and quizzes.</p>
+      <button class="big" id="startButton" data-go="register">Start Learning</button></section>`;
+  },
+  register() {
+    app.innerHTML = `<section class="card"><h2>Create your learner profile</h2>
+      <label>Your first name<input id="name" maxlength="20" autocomplete="off"></label>
+      <p>Pick a buddy</p><div class="avatars">${['🦁','🐼','🦊','🐸','🐙','🦄'].map((a, i) => `<label><input type="radio" name="av" value="${a}" ${i ? '' : 'checked'}><span>${a}</span></label>`).join('')}</div>
+      <label>Parent PIN (4 digits, for the Parents page)<input id="pin" inputmode="numeric" maxlength="4"></label>
+      <p id="err" class="no"></p><button class="primary" data-act="register">Let’s go!</button></section>`;
+  },
+  home() {
+    const done = S.scores.length;
+    app.innerHTML = `<section class="card"><h2>${S.avatar} Hi ${esc(S.name)}!</h2>
+      <div class="stats"><div><b>${S.points}</b>points</div><div><b>${S.streak}🔥</b>day streak</div><div><b>${done}</b>quizzes</div></div></section>
+      <h3>Choose a subject</h3><div class="grid">${Object.entries(SUBJECTS).map(([s, ic]) => `<button class="tile" data-go="subject:${s}"><span class="ic">${ic}</span>${s}</button>`).join('')}
+      <button class="tile" data-go="helper"><span class="ic">💡</span>Homework Helper</button></div>
+      <section class="card"><h3>Badges</h3>${BADGES.map(([n, ok]) => `<span class="badge ${ok() ? '' : 'off'}">${ok() ? '🏅' : '🔒'} ${n}</span>`).join('')}</section>
+      <section class="card"><h3>Recent activity</h3>${S.log.length ? S.log.map(l => `<p class="muted">${esc(l)}</p>`).join('') : '<p class="muted">Nothing yet. Pick a subject and take your first quiz!</p>'}</section>`;
+  },
+  subject(s) {
+    app.innerHTML = `<button class="back" data-go="home">← Back</button><h2>${SUBJECTS[s]} ${s}</h2><div class="grid">${Object.entries(TOPICS).filter(([, t]) => t.subj === s).map(([k, t]) => `<button class="tile" data-go="topic:${k}"><span class="ic">${t.icon}</span>${t.name}</button>`).join('')}</div>`;
+  },
+  topic(k) {
+    const t = TOPICS[k], ex = t.gen();
+    app.innerHTML = `<button class="back" data-go="subject:${t.subj}">← ${t.subj}</button>
+      <section class="card"><h2>${t.icon} ${t.name}</h2><p>${t.lesson}</p></section>
+      <section class="card"><h3>Example</h3><p><b>${esc(ex.q)}</b></p><p>Answer: <b>${esc(ex.opts[ex.a])}</b></p><p class="muted">${esc(ex.why)}</p></section>
+      <button class="big" data-act="quiz:${k}">Take the quiz</button>`;
+  },
+  helper() {
+    app.innerHTML = `<section class="card"><h2>💡 Homework Helper</h2>
+      <p>Type your question, like <i>47 + 26</i>, <i>what is a noun?</i> or <i>how do I divide?</i> I’ll show you the steps, then you try it.</p>
+      <textarea id="hq" rows="2" maxlength="200"></textarea><button class="primary" data-act="ask">Help me</button></section><div id="out"></div>`;
+  },
+  progress() {
+    const rows = Object.entries(TOPICS).map(([k, t]) => { const p = avg(S.scores.filter(s => s.topic === k));
+      return `<div class="row"><span>${t.icon} ${t.name}</span><div class="bar"><span style="width:${p || 0}%"></span></div><span>${p === null ? '–' : p + '%'}</span></div>`; }).join('');
+    app.innerHTML = `<section class="card"><h2>📈 My progress</h2>${rows}</section>
+      <section class="card"><p>Points: <b>${S.points}</b> · Streak: <b>${S.streak} days</b></p>${BADGES.map(([n, ok]) => `<span class="badge ${ok() ? '' : 'off'}">${n}</span>`).join('')}</section>`;
+  },
+  parent() {
+    app.innerHTML = `<section class="card"><h2>👨‍👩‍👧 Parents</h2><p>Enter your PIN to see ${esc(S.name)}’s progress.</p>
+      <input id="ppin" type="password" inputmode="numeric" maxlength="4"><p id="err" class="no"></p><button class="primary" data-act="unlock">Unlock</button></section>`;
+  },
+  parentOpen() {
+    const weak = Object.entries(TOPICS).filter(([k]) => { const p = avg(S.scores.filter(s => s.topic === k)); return p !== null && p < 60; }).map(([, t]) => t.name);
+    const bySubj = Object.keys(SUBJECTS).map(s => { const p = avg(S.scores.filter(x => TOPICS[x.topic].subj === s)); return `<div class="row"><span>${s}</span><div class="bar"><span style="width:${p || 0}%"></span></div><span>${p === null ? '–' : p + '%'}</span></div>`; }).join('');
+    app.innerHTML = `<section class="card"><h2>${esc(S.name)}’s report</h2>${bySubj}
+      <p><b>Needs extra support:</b> ${weak.length ? weak.join(', ') : 'nothing flagged yet 🎉'}</p>
+      <p><b>Quizzes done:</b> ${S.scores.length} · <b>Streak:</b> ${S.streak} days</p>${S.log.map(l => `<p class="muted">${esc(l)}</p>`).join('')}
+      <button class="back" data-act="reset">Delete all data</button></section>`;
+  }
+};
+
+/* ---------- Homework Helper (rule-based, no AI yet) ---------- */
+function helpAnswer(text) {
+  const m = text.match(/(\d+)\s*([+\-−x×*\/÷])\s*(\d+)/i);
+  if (m) {
+    const a = +m[1], b = +m[3], op = m[2], key = { '+': 'add', '-': 'sub', '−': 'sub', 'x': 'mul', '×': 'mul', '*': 'mul', '/': 'div', '÷': 'div' }[op];
+    const ans = { add: a + b, sub: a - b, mul: a * b, div: b ? a / b : NaN }[key];
+    const steps = { add: ['Split each number into tens and ones.', 'Add the ones, then add the tens.', 'Put the two answers together.'],
+      sub: ['Start with the bigger number.', 'Subtract the tens first, then the ones.', 'Check by adding your answer to the smaller number.'],
+      mul: ['Think "groups of": the first number is how many groups.', 'Break the bigger number into tens and ones if it helps.', 'Multiply each part, then add them up.'],
+      div: ['Ask: how many groups of the second number fit into the first?', 'Think of the times table backwards.', 'Check by multiplying your answer by the second number.'] }[key];
+    window.hw = ans;
+    return `<section class="card"><h3>Let’s work it out: ${a} ${op} ${b}</h3><ol class="steps">${steps.map(s => `<li>${s}</li>`).join('')}</ol>
+      <p>Now you try! What is your answer?</p><input id="myans" inputmode="numeric"><button class="primary" data-act="check">Check my answer</button><p id="res"></p></section>`;
+  }
+  const hit = Object.entries(TOPICS).find(([, t]) => t.kw.test(text.toLowerCase()));
+  if (hit) return `<section class="card"><h3>${hit[1].icon} ${hit[1].name}</h3><p>${hit[1].lesson}</p><button class="primary" data-go="topic:${hit[0]}">See an example and practise</button></section>`;
+  return `<section class="card"><p>I’m not sure about that one yet. Try a sum like <b>35 + 18</b> or ask about a topic such as nouns, fractions or matter. You can also ask a parent or teacher.</p></section>`;
+}
+
+/* ---------- Quiz engine ---------- */
+let Q = null;
+function startQuiz(k) {
+  const qs = [], seen = new Set(); let tries = 0;
+  while (qs.length < 5 && tries++ < 60) { const x = TOPICS[k].gen(); if (!seen.has(x.q)) { seen.add(x.q); qs.push(x); } }
+  Q = { k, qs, i: 0, score: 0 }; showQ();
+}
+function showQ() {
+  const x = Q.qs[Q.i];
+  app.innerHTML = `<section class="card"><p class="muted">${TOPICS[Q.k].name}: question ${Q.i + 1} of ${Q.qs.length}</p>
+    <div class="bar"><span style="width:${Q.i / Q.qs.length * 100}%"></span></div><h2>${esc(x.q)}</h2>
+    <div class="opts">${x.opts.map((o, j) => `<button class="opt" data-pick="${j}">${esc(o)}</button>`).join('')}</div><div id="fb"></div></section>`;
+}
+function pick(j) {
+  const x = Q.qs[Q.i], ok = j === x.a; if (ok) Q.score++;
+  document.querySelectorAll('.opt').forEach((b, n) => { b.disabled = true; if (n === x.a) b.classList.add('right'); else if (n === j) b.classList.add('wrong'); });
+  const last = Q.i === Q.qs.length - 1;
+  document.querySelector('#fb').innerHTML = `<p class="${ok ? 'ok' : 'no'}">${ok ? 'Correct! 🎉' : 'Not quite.'}</p><p>${esc(x.why)}</p><button class="primary" data-act="${last ? 'finish' : 'next'}">${last ? 'See my score' : 'Next question'}</button>`;
+}
+function finishQuiz() {
+  const total = Q.qs.length, pts = Q.score * 10;
+  S.points += pts; S.scores.push({ topic: Q.k, score: Q.score, total, date: Date.now() });
+  bumpStreak(); log(`${TOPICS[Q.k].name} quiz: ${Q.score}/${total}`); save();
+  const msg = Q.score === total ? 'Perfect! Amazing work!' : Q.score >= 3 ? 'Great job, keep going!' : 'Good try. Read the lesson again and have another go.';
+  app.innerHTML = `<section class="card hero"><h2>${Q.score} / ${total}</h2><p>${msg}</p><p>You earned <b>${pts} points</b> ⭐</p>
+    <button class="big" data-act="quiz:${Q.k}">Try again</button> <button class="primary" data-go="home">Home</button></section>`;
+}
+
+/* ---------- Navigation + click handling (one listener for the whole page) ---------- */
+function go(target) {
+  let [v, p] = target.split(':');
+  if (!S && v !== 'landing' && v !== 'register') v = 'landing'; // not signed up yet? back to the start
+  document.querySelector('#nav').hidden = !S;
+  views[v](p); window.scrollTo(0, 0);
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-go],[data-act],[data-pick]'); if (!el) return;
+  if (el.dataset.go) return go(el.dataset.go);
+  if (el.dataset.pick) return pick(+el.dataset.pick);
+  const [act, arg] = el.dataset.act.split(':');
+  const $ = s => document.querySelector(s);
+  if (act === 'register') {
+    const name = $('#name').value.trim(), pin = $('#pin').value;
+    if (!name) return $('#err').textContent = 'Please type your name.';
+    if (!/^\d{4}$/.test(pin)) return $('#err').textContent = 'The PIN needs exactly 4 numbers.';
+    S = { name, pin, avatar: document.querySelector('input[name=av]:checked').value, points: 0, streak: 0, last: '', scores: [], log: [] };
+    save(); go('home');
+  }
+  if (act === 'quiz') startQuiz(arg);
+  if (act === 'next') { Q.i++; showQ(); }
+  if (act === 'finish') finishQuiz();
+  if (act === 'ask') { const t = $('#hq').value.trim(); if (t) { $('#out').innerHTML = helpAnswer(t); log('Used the Homework Helper'); save(); } }
+  if (act === 'check') { const v = parseFloat($('#myans').value);
+    $('#res').innerHTML = v === window.hw ? '<span class="ok">Yes, that is right! 🎉</span>' : '<span class="no">Not yet. Go through the steps again and try once more.</span>'; }
+  if (act === 'unlock') { if ($('#ppin').value === S.pin) views.parentOpen(); else $('#err').textContent = 'Wrong PIN.'; }
+  if (act === 'reset' && confirm('Delete this learner and all progress?')) { localStorage.removeItem(KEY); S = null; go('landing'); }
+});
+
+go(S ? 'home' : 'landing');
+</script>
+</body>
+</html>
