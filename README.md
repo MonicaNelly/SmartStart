@@ -39,24 +39,25 @@ The following features are planned for future development:
 - **Parent Dashboard:** A planned feature for viewing a learner's progress.
 
 These features will be implemented gradually as the project develops.
-
 ## Technology Stack
 
 ### Currently Used
 
-- HTML5 — webpage structure.
-- CSS3 — styling and layout.
-- JavaScript — interactive functionality.
+- **HTML5** — webpage structure and content.
+- **CSS3** — styling and layout.
+- **JavaScript** — existing interactive functionality.
 
 ### Planned Technologies
 
-- Node.js and Express.js — backend and API development.
-- PostgreSQL or MongoDB — database integration, with the final choice to be confirmed.
+- **TypeScript** — gradual introduction of type-safe application development.
+- **Node.js and Express.js** — backend and API development.
+- **PostgreSQL ** — database integration, with the final choice to be confirmed.
 - Additional technologies may be considered as the project grows.
+
+
 
 ## Project Structure
 
-```text
 SmartSteps/
 ├── frontend/
 │   ├── index.html
@@ -68,7 +69,7 @@ SmartSteps/
 ├── backend/
 ├── documentation/
 └── README.md
-```
+
 
 - `frontend/` — contains the user interface and browser-side code.
 - `backend/` — reserved for future server-side functionality and API development.
